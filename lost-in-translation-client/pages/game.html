@@ -2,17 +2,18 @@
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 		<title>Start Round</title>
-        <link rel="stylesheet" href="/lost-in-translation/styles/style.css">
+		<link rel="stylesheet" href="/lost-in-translation/styles/style.css"/>
 	</head>
 	<body>
-
 		<header class="topbar">
-			<a href="/lost-in-translation/index.html" class="logo"> Lost in Translation </a>
-			<a href="/lost-in-translation/pages/hall-of-fame.html" class="nav-link"
-				>Hall of Fame →</a
-			>
+			<a href="/lost-in-translation/index.html" class="logo">
+				Lost in Translation
+			</a>
+			<a href="/lost-in-translation/pages/hall-of-fame.html" class="nav-link">
+				Hall of Fame ->
+			</a>
 		</header>
 
 		<main class="game-wrap">
@@ -41,24 +42,20 @@
 
 				<div id="feedback" class="feedback"></div>
 
-				<button id="hint-btn" class="btn-secondary">
-					💡 Use Hint (-30 pts)
-				</button>
+				<button id="hint-btn" class="btn-secondary">Use Hint (-30 pts)</button>
 				<div id="hint-display" class="hint-display"></div>
 			</section>
 
-            <section id="reveal-screen" class="screen">
-                <h2>The Chain of Destruction</h2>
+			<section id="reveal-screen" class="screen">
+				<h2>The Chain of Destruction</h2>
 				<div id="reveal-original" class="reveal-original"></div>
 				<div id="reveal-steps" class="reveal-steps"></div>
 				<div id="mangle-score-display" class="mangle-score"></div>
 				<button id="play-again-btn" class="btn-primary">Play Again</button>
-            </section>
+			</section>
 		</main>
 
-        <script src="/lost-in-translation/scripts/mock-api.js"></script>
-        <script src="/lost-in-translation/scripts/axios.min.js"></script>
-        <script src="/lost-in-translation/scripts/game.js"></script>
-
+		<script src="/lost-in-translation/scripts/axios.min.js"></script>
+		<script src="/lost-in-translation/scripts/game.js"></script>
 	</body>
 </html>

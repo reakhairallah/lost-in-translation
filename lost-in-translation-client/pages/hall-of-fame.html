@@ -8,10 +8,11 @@
 	</head>
 
 	<body>
-
 		<header class="topbar">
-			<h1>🏆 Hall of Fame</h1>
-			<a href="/lost-in-translation/index.html" class="nav-link">← Back to Game</a>
+			<h1>Hall of Fame</h1>
+			<a href="/lost-in-translation/index.html" class="nav-link">
+				<- Back to Game</a
+			>
 		</header>
 
 		<main class="game-wrap">
@@ -22,14 +23,10 @@
 				<button class="sort-btn" data-sort="votes">Sort by Votes</button>
 			</div>
 
-			<ul id="hof-list" class="hof-list">
-				<!-- populated by JS -->
-			</ul>
+			<ul id="hof-list" class="hof-list"></ul>
 		</main>
 
-		<script src="/lost-in-translation/scripts/mock-api.js"></script>
 		<script src="/lost-in-translation/scripts/axios.min.js"></script>
 		<script src="/lost-in-translation/scripts/halloffame.js"></script>
-
 	</body>
 </html>
