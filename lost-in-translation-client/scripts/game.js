@@ -1,5 +1,12 @@
 const API_BASE = "/lost-in-translation/lost-in-translation-server";
-const ROUND_DURATION = 60;
+
+// Not hardcoded — round_status.php doesn't expose duration_seconds directly, so this
+// is set from the first seconds_remaining seen for each new round_id (a fresh round's
+// first poll is a close-enough proxy for its full duration). Keeps the wheel accurate
+// even if the backend's round length changes, instead of two numbers silently drifting
+// out of sync (which is exactly what happened before this fix).
+let currentRoundId = null;
+let roundDuration = 60;
 
 const screens = {
 	loading: document.getElementById("loading-screen"),
@@ -89,6 +96,11 @@ function applyRoundState(data) {
 		return;
 	}
 
+	if (data.round_id !== currentRoundId) {
+		currentRoundId = data.round_id;
+		roundDuration = data.seconds_remaining;
+	}
+
 	document.getElementById("mangled-sentence").textContent = data.mangled_text;
 	displayedRemaining = data.seconds_remaining;
 	updateWheel(displayedRemaining);
@@ -100,7 +112,7 @@ function applyRoundState(data) {
 
 function updateWheel(secondsRemaining) {
 	const wheel = document.getElementById("wheel");
-	const pct = (Math.max(secondsRemaining, 0) / ROUND_DURATION) * 100;
+	const pct = (Math.max(secondsRemaining, 0) / roundDuration) * 100;
 	wheel.style.setProperty("--pct", pct.toFixed(1));
 	wheel.classList.toggle("is-low", secondsRemaining <= 5 && secondsRemaining > 0);
 	document.getElementById("timer").textContent = Math.max(secondsRemaining, 0);
