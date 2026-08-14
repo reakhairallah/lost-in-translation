@@ -164,3 +164,52 @@ function translateCached(mysqli $mysql, string $text, string $sourceLang, string
 
     return $result;
 }
+
+function storeChainStep(mysqli $mysql, int $roundId, int $hopIndex, string $languageCode, string $text): void {
+    $charCount = mb_strlen($text, 'UTF-8');
+
+    $stmt = $mysql->prepare('INSERT INTO chain_steps (round_id, hop_index, language_code, text, char_count) VALUES (?, ?, ?, ?, ?)');
+    $stmt->bind_param('iissi', $roundId, $hopIndex, $languageCode, $text, $charCount);
+    $stmt->execute();
+    $stmt->close();
+}
+
+function run_chain(mysqli $mysql, int $roundId, string $seedText, array $languages, string $provider = 'mymemory'): array {
+    $steps = [];
+    $currentText = $seedText;
+    $hopCount = count($languages) - 1;
+
+    for ($i = 0; $i < $hopCount; $i++) {
+        $sourceLang = $languages[$i];
+        $targetLang = $languages[$i + 1];
+        $hopIndex = $i + 1;
+
+        $result = translateCached($mysql, $currentText, $sourceLang, $targetLang, $provider);
+
+        if ($result['success'] === false) {
+            return [
+                'success' => false,
+                'steps' => $steps,
+                'failed_hop_index' => $hopIndex,
+                'error' => $result['error'],
+            ];
+        }
+
+        $currentText = $result['text'];
+
+        storeChainStep($mysql, $roundId, $hopIndex, $targetLang, $currentText);
+
+        $steps[$i] = [
+            'hop_index' => $hopIndex,
+            'language_code' => $targetLang,
+            'text' => $currentText,
+        ];
+    }
+
+    return [
+        'success' => true,
+        'steps' => $steps,
+        'failed_hop_index' => null,
+        'error' => '',
+    ];
+}
