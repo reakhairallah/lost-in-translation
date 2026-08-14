@@ -10,9 +10,19 @@ $state = $query->get_result()->fetch_assoc();
 $round_id = $state["current_round_id"];
 
 if ($round_id == null) {
-    // Cold start — no round has ever run.
+    // Cold start — no round has ever run. Expected old value is NULL, since that's
+    // what we just read game_state to be.
     $round_id = createRound();
-    openRound($round_id);
+    $won = openRound($round_id, null);
+
+    if (!$won) {
+        // A different simultaneous cold-start request beat us to it — use the round
+        // that actually became active instead of our own orphaned one.
+        $sql = "SELECT current_round_id FROM game_state WHERE id = 1";
+        $query = $mysql->prepare($sql);
+        $query->execute();
+        $round_id = $query->get_result()->fetch_assoc()["current_round_id"];
+    }
 }
 
 $sql = "SELECT id, status, TIMESTAMPDIFF(SECOND, NOW(), closes_at) AS seconds_remaining FROM rounds WHERE id = ?";
