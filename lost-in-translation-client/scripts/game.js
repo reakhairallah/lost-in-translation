@@ -1,3 +1,5 @@
+const API_BASE = "/lost-in-translation/lost-in-translation-server";
+
 const screens = {
 	loading: document.getElementById("loading-screen"),
 	round: document.getElementById("round-screen"),
@@ -5,11 +7,46 @@ const screens = {
 };
 
 let pollHandle = null;
-let localTickHandle = null;
 
 function showScreen(name) {
 	Object.values(screens).forEach((s) => s.classList.remove("active"));
 	screens[name].classList.add("active");
+}
+
+// --- API calls, matching docs/endpoints.md exactly ---
+
+async function apiRoundState() {
+	const res = await axios.get(`${API_BASE}/round_status.php`, {
+		withCredentials: true,
+	});
+	return res.data;
+}
+
+async function apiNextRound() {
+	const res = await axios.post(
+		`${API_BASE}/next_round.php`,
+		{},
+		{ withCredentials: true }
+	);
+	return res.data;
+}
+
+async function apiSubmitGuess(guess) {
+	const res = await axios.post(
+		`${API_BASE}/submit_guess.php`,
+		{ guess },
+		{ withCredentials: true }
+	);
+	return res.data;
+}
+
+async function apiUseHint() {
+	const res = await axios.post(
+		`${API_BASE}/use_hint.php`,
+		{},
+		{ withCredentials: true }
+	);
+	return res.data;
 }
 
 startRound();
@@ -21,17 +58,68 @@ async function startRound() {
 	document.getElementById("hint-display").textContent = "";
 	document.getElementById("guess-input").value = "";
 
-	await apiGenerateRound(); // <-- change the name to your api for starting the round
+	// round_status.php bootstraps the very first round itself on cold start — nothing
+	// else needs to be called before this to "start" a round.
+	const state = await apiRoundState();
 
-	const state = await apiRoundState(); // <-- change the name to your api for teh state of teh round
-	document.getElementById("mangled-sentence").textContent =
-		state.mangled_sentence;
+	if (!state.success) {
+		document.getElementById("mangled-sentence").textContent =
+			"Something went wrong. Please refresh.";
+		return;
+	}
+
+	applyRoundState(state.data);
+}
+
+function applyRoundState(data) {
+	updateHintUI(data.hints_remaining);
+	updateGuessUI(data.already_guessed);
+
+	if (data.status === "revealed") {
+		stopPolling();
+		playReveal(data);
+		return;
+	}
+
+	document.getElementById("mangled-sentence").textContent = data.mangled_text;
+	document.getElementById("timer").textContent = data.seconds_remaining;
 
 	showScreen("round");
 	startPolling();
 }
 
-// --- add the axios for the timer ---
+function updateHintUI(hintsRemaining) {
+	const btn = document.getElementById("hint-btn");
+	btn.disabled = hintsRemaining <= 0;
+	btn.textContent =
+		hintsRemaining > 0
+			? `Use Hint (-30 pts) [${hintsRemaining} left]`
+			: "No hints left";
+}
+
+function updateGuessUI(alreadyGuessed) {
+	document.getElementById("guess-input").disabled = alreadyGuessed;
+	document.querySelector('#guess-form button[type="submit"]').disabled =
+		alreadyGuessed;
+}
+
+function startPolling() {
+	stopPolling();
+	// Server is the single source of truth for time remaining and round status —
+	// this just re-displays what round_status.php returns, never counts down locally.
+	pollHandle = setInterval(async () => {
+		const state = await apiRoundState();
+		if (!state.success) return;
+		applyRoundState(state.data);
+	}, 2000);
+}
+
+function stopPolling() {
+	if (pollHandle) {
+		clearInterval(pollHandle);
+		pollHandle = null;
+	}
+}
 
 const submission = document.getElementById("guess-form");
 
@@ -45,63 +133,94 @@ submission.addEventListener("submit", async (e) => {
 	feedback.textContent = "Checking...";
 	feedback.className = "feedback";
 
-	const res = await apiSubmitGuess(guess); // <-- change to the api name for submitting response
+	const res = await apiSubmitGuess(guess);
 
-	feedback.className = "feedback " + res.result;
-	if (res.result === "correct") {
-		feedback.textContent = `Correct! +${res.score} points`;
-		stopPolling();
-		setTimeout(playReveal, 1200); //stop time here and start function playReveal
-	} else if (res.result === "close") {
-		feedback.textContent = "Close! Try again.";
-	} else {
-		feedback.textContent = "Not quite. Keep guessing!";
+	if (!res.success) {
+		feedback.className = "feedback wrong";
+		feedback.textContent = res.error;
+		return;
 	}
+
+	const { result, points_awarded } = res.data;
+	feedback.className = "feedback " + result;
+
+	if (result === "correct") {
+		feedback.textContent = `Correct! +${points_awarded} points`;
+	} else if (result === "close") {
+		feedback.textContent = "Close! (one guess per round — hang tight for reveal)";
+	} else {
+		feedback.textContent = "Not quite. (one guess per round — hang tight for reveal)";
+	}
+
+	// Only one guess per player per round — don't let them try again. The round
+	// itself doesn't end early just because this player guessed (it's shared with
+	// everyone else still playing), so keep polling; the reveal happens naturally
+	// once the shared timer actually runs out.
+	updateGuessUI(true);
 });
 
 const hints = document.getElementById("hint-btn");
 
 hints.addEventListener("click", async () => {
-	const res = await apiUseHint(); // <-- add your api name for hints
+	const res = await apiUseHint();
 	const display = document.getElementById("hint-display");
-	if (res.error) {
+
+	if (!res.success) {
 		display.textContent = res.error;
 		return;
 	}
-	display.textContent = `Hint (${res.language}): "${res.text}" (-${res.points_deducted} pts)`;
+
+	const { language_code, text, hints_remaining } = res.data;
+	display.textContent = `Hint (${language_code}): "${text}"`;
+	updateHintUI(hints_remaining);
 });
 
 const reveal = document.getElementById("play-again-btn");
 
-reveal.addEventListener("click", startRound);
+reveal.addEventListener("click", async () => {
+	const res = await apiNextRound();
 
-async function playReveal() {
-	stopPolling(); // Stop Time or stop counting
+	if (!res.success) {
+		document.getElementById("feedback").textContent = res.error;
+		return;
+	}
+
+	startRound();
+});
+
+function playReveal(data) {
 	showScreen("reveal");
 
-	const revealData = await apiGetReveal(); // <-- put your name of teh api to reveal teh answer
-
 	document.getElementById("reveal-original").textContent =
-		`Original: "${revealData.original}"`;
+		`Original: "${data.seed_text}"`;
 
 	const container = document.getElementById("reveal-steps");
 	container.innerHTML = "";
 	document.getElementById("mangle-score-display").textContent = "";
 
-	// build all step elements up front, reveal one at a time
-	const stepEls = revealData.steps.map((step) => {
+	// char_delta isn't sent by the backend — derive it here from each step's length
+	// vs. the previous one (or the seed, for the first hop).
+	const stepEls = data.chain_steps.map((step, i) => {
+		const prevLength =
+			i === 0 ? data.seed_text.length : data.chain_steps[i - 1].text.length;
+		const charDelta = step.text.length - prevLength;
+		const deltaSign = charDelta > 0 ? "+" : "";
+
 		const el = document.createElement("div");
 		el.className = "reveal-step";
-		const deltaSign = step.char_delta > 0 ? "+" : "";
 		el.innerHTML = `
-      <span class="lang">${step.label}</span>
-      <span class="delta">${deltaSign}${step.char_delta} chars</span>
+      <span class="lang">${step.language_code}</span>
+      <span class="delta">${deltaSign}${charDelta} chars</span>
       <div>${step.text}</div>
     `;
 		container.appendChild(el);
 		return el;
 	});
 
+	revealStepsSequentially(stepEls, data.mangle_score);
+}
+
+async function revealStepsSequentially(stepEls, mangleScore) {
 	for (let i = 0; i < stepEls.length; i++) {
 		await new Promise((resolve) => setTimeout(resolve, 1000)); // ~1 sec per hop
 		stepEls[i].classList.add("visible");
@@ -109,5 +228,5 @@ async function playReveal() {
 
 	await new Promise((resolve) => setTimeout(resolve, 400));
 	document.getElementById("mangle-score-display").textContent =
-		`Mangle Score: ${revealData.mangle_score} / 100`;
+		`Mangle Score: ${mangleScore} / 100`;
 }

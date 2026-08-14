@@ -26,17 +26,22 @@ Identifies the caller via the `session_id` cookie (set automatically by
 | `hints_used_by_me` | int | for this session, this round |
 | `hints_remaining` | int | `3 - hints_used_by_me` |
 | `already_guessed` | bool | has this session submitted a guess this round |
+| `mangled_text` | string \| null | the puzzle itself — final chain hop's text (highest `hop_index`, always the `en` result). Present at **every** status, since it's what players guess from, not the answer. `null` only for an `aborted` round (never got any `chain_steps` written). |
 | `seed_text` | string | **only present when `status === "revealed"`** |
 | `chain_steps` | array | **only present when `status === "revealed"`** — each item: `hop_index`, `language_code`, `text` |
+| `mangle_score` | float | **only present when `status === "revealed"`** — 0–100, higher = more destroyed (same value stored in `hall_of_fame`) |
 
 `seed_text` and `chain_steps` are deliberately omitted at every other status — never sent
-before reveal, since that would leak the answer.
+before reveal, since that would leak the answer. `mangled_text` is different: it's the
+mangled output itself, which is the whole puzzle players see and guess from, so it's
+safe (and necessary) to send from the moment the round opens.
 
 Example (`open`):
 ```json
 {"success": true, "data": {
   "round_id": 6, "status": "open", "seconds_remaining": 42,
-  "hints_used_by_me": 1, "hints_remaining": 2, "already_guessed": false
+  "hints_used_by_me": 1, "hints_remaining": 2, "already_guessed": false,
+  "mangled_text": "Could he eat the frog with that sound?"
 }}
 ```
 
@@ -45,7 +50,9 @@ Example (`revealed`):
 {"success": true, "data": {
   "round_id": 6, "status": "revealed", "seconds_remaining": 0,
   "hints_used_by_me": 1, "hints_remaining": 2, "already_guessed": true,
+  "mangled_text": "Could he eat the frog with that sound?",
   "seed_text": "Bite the bullet.",
+  "mangle_score": 88.4615,
   "chain_steps": [
     {"hop_index": 1, "language_code": "ja", "text": "..."},
     ...
