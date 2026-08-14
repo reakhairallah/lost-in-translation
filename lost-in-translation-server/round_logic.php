@@ -24,7 +24,7 @@ function createRound(): int {
         $error = $result["error"];
         $failed_hop_index = $result["failed_hop_index"];
 
-        $sql = "INSERT INTO rounds(seed_id, status, language_chain, duration_seconds, abort_reason, failed_hop_index) VALUES(?, 'aborted', ?, 15, ?, ?)";
+        $sql = "INSERT INTO rounds(seed_id, status, language_chain, duration_seconds, abort_reason, failed_hop_index) VALUES(?, 'aborted', ?, 60, ?, ?)";
         $query = $mysql->prepare($sql);
         $query->bind_param("issi", $seed_id, $language_chain_str, $error, $failed_hop_index);
         $query->execute();
@@ -32,7 +32,7 @@ function createRound(): int {
         return $mysql->insert_id;
     }
 
-    $sql = "INSERT INTO rounds(seed_id, status, language_chain, duration_seconds) VALUES(?, 'generated', ?, 15)";
+    $sql = "INSERT INTO rounds(seed_id, status, language_chain, duration_seconds) VALUES(?, 'generated', ?, 60)";
     $query = $mysql->prepare($sql);
     $query->bind_param("is", $seed_id, $language_chain_str);
     $query->execute();

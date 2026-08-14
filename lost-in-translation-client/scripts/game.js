@@ -10,6 +10,8 @@ const screens = {
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 let pollHandle = null;
+let tickHandle = null;
+let displayedRemaining = 0;
 
 function showScreen(name) {
 	Object.values(screens).forEach((s) => s.classList.remove("active"));
@@ -82,12 +84,15 @@ function applyRoundState(data) {
 
 	if (data.status === "revealed") {
 		stopPolling();
+		stopLocalTick();
 		playReveal(data);
 		return;
 	}
 
 	document.getElementById("mangled-sentence").textContent = data.mangled_text;
-	updateWheel(data.seconds_remaining);
+	displayedRemaining = data.seconds_remaining;
+	updateWheel(displayedRemaining);
+	startLocalTick();
 
 	showScreen("round");
 	startPolling();
@@ -98,7 +103,25 @@ function updateWheel(secondsRemaining) {
 	const pct = (Math.max(secondsRemaining, 0) / ROUND_DURATION) * 100;
 	wheel.style.setProperty("--pct", pct.toFixed(1));
 	wheel.classList.toggle("is-low", secondsRemaining <= 5 && secondsRemaining > 0);
-	document.getElementById("timer").textContent = secondsRemaining;
+	document.getElementById("timer").textContent = Math.max(secondsRemaining, 0);
+}
+
+function startLocalTick() {
+	stopLocalTick();
+	// Purely visual, ticks every 1s so the wheel counts down smoothly between polls.
+	// The 2s poll in startPolling() remains the authoritative resync — this can never
+	// drift more than one second off before the next poll corrects it.
+	tickHandle = setInterval(() => {
+		displayedRemaining = Math.max(displayedRemaining - 1, 0);
+		updateWheel(displayedRemaining);
+	}, 1000);
+}
+
+function stopLocalTick() {
+	if (tickHandle) {
+		clearInterval(tickHandle);
+		tickHandle = null;
+	}
 }
 
 function updateHintUI(hintsRemaining) {
@@ -118,8 +141,10 @@ function updateGuessUI(alreadyGuessed) {
 
 function startPolling() {
 	stopPolling();
-	// Server is the single source of truth for time remaining and round status —
-	// this just re-displays what round_status.php returns, never counts down locally.
+	// Server is the single source of truth for time remaining and round status.
+	// startLocalTick() ticks the displayed number down for smoothness between polls,
+	// but every 2s this resyncs displayedRemaining straight from the server, so it
+	// can never drift for more than a second.
 	pollHandle = setInterval(async () => {
 		const state = await apiRoundState();
 		if (!state.success) return;
