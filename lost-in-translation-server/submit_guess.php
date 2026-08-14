@@ -51,9 +51,9 @@ $hints_used = (int) $query->get_result()->fetch_assoc()["total"];
 
 $sim = similarity($guess_text, $seed_text);
 
-if ($sim >= 0.85) {
+if ($sim >= 0.75) {
     $result = "correct";
-} else if ($sim >= 0.60) {
+} else if ($sim >= 0.40) {
     $result = "close";
 } else {
     $result = "wrong";
