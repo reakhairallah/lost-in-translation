@@ -1,6 +1,7 @@
 <?php
 
-include("stubs/translation_chain.php");
+include("temp/translation_chain.php");
+include("scoring.php");
 
 function createRound(): int {
     global $mysql;
@@ -79,6 +80,47 @@ function openRound(int $roundId): void {
         // Someone else already advanced game_state first — not an error, just note it.
         error_log("openRound: game_state already advanced past expected current_round_id=" . var_export($old_current_round_id, true));
     }
+}
+
+function closeRound(int $roundId): void {
+    global $mysql;
+
+    $sql = "UPDATE rounds SET status = 'closed' WHERE id = ?";
+    $query = $mysql->prepare($sql);
+    $query->bind_param("i", $roundId);
+    $query->execute();
+}
+
+function revealRound(int $roundId): void {
+    global $mysql;
+
+    $sql = "SELECT r.seed_id, s.text AS seed_text FROM rounds r JOIN seeds s ON s.id = r.seed_id WHERE r.id = ?";
+    $query = $mysql->prepare($sql);
+    $query->bind_param("i", $roundId);
+    $query->execute();
+    $round = $query->get_result()->fetch_assoc();
+
+    $seed_id = $round["seed_id"];
+    $seed_text = $round["seed_text"];
+
+    $sql = "SELECT text FROM chain_steps WHERE round_id = ? ORDER BY hop_index DESC LIMIT 1";
+    $query = $mysql->prepare($sql);
+    $query->bind_param("i", $roundId);
+    $query->execute();
+    $final_step = $query->get_result()->fetch_assoc();
+    $final_text = $final_step["text"];
+
+    $mangle_score = (1 - similarity($seed_text, $final_text)) * 100;
+
+    $sql = "UPDATE rounds SET status = 'revealed', revealed_at = NOW() WHERE id = ?";
+    $query = $mysql->prepare($sql);
+    $query->bind_param("i", $roundId);
+    $query->execute();
+
+    $sql = "INSERT INTO hall_of_fame(round_id, seed_id, mangle_score) VALUES(?, ?, ?)";
+    $query = $mysql->prepare($sql);
+    $query->bind_param("iid", $roundId, $seed_id, $mangle_score);
+    $query->execute();
 }
 
 ?>
