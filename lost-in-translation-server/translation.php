@@ -127,3 +127,40 @@ function translate(string $text, string $sourceLang, string $targetLang, string 
 
     return $result;
 }
+
+function getCachedTranslation(mysqli $mysql, string $text, string $sourceLang, string $targetLang) {
+    $stmt = $mysql->prepare('SELECT translated_text FROM translation_cache WHERE source_text = ? AND source_lang = ? AND target_lang = ?');
+    $stmt->bind_param('sss', $text, $sourceLang, $targetLang);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if ($row === null) {
+        return null;
+    }
+
+    return $row['translated_text'];
+}
+
+function storeCachedTranslation(mysqli $mysql, string $text, string $sourceLang, string $targetLang, string $translatedText): void {
+    $stmt = $mysql->prepare('INSERT IGNORE INTO translation_cache (source_text, source_lang, target_lang, translated_text) VALUES (?, ?, ?, ?)');
+    $stmt->bind_param('ssss', $text, $sourceLang, $targetLang, $translatedText);
+    $stmt->execute();
+    $stmt->close();
+}
+
+function translateCached(mysqli $mysql, string $text, string $sourceLang, string $targetLang, string $provider = 'mymemory'): array {
+    $cachedText = getCachedTranslation($mysql, $text, $sourceLang, $targetLang);
+
+    if ($cachedText !== null) {
+        return ['success' => true, 'text' => $cachedText, 'error' => ''];
+    }
+
+    $result = translate($text, $sourceLang, $targetLang, $provider);
+
+    if ($result['success'] === true) {
+        storeCachedTranslation($mysql, $text, $sourceLang, $targetLang, $result['text']);
+    }
+
+    return $result;
+}
