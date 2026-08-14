@@ -1,10 +1,13 @@
 const API_BASE = "/lost-in-translation/lost-in-translation-server";
+const ROUND_DURATION = 60;
 
 const screens = {
 	loading: document.getElementById("loading-screen"),
 	round: document.getElementById("round-screen"),
 	reveal: document.getElementById("reveal-screen"),
 };
+
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 let pollHandle = null;
 
@@ -53,9 +56,10 @@ startRound();
 
 async function startRound() {
 	showScreen("loading");
-	document.getElementById("feedback").textContent = "";
-	document.getElementById("feedback").className = "feedback";
-	document.getElementById("hint-display").textContent = "";
+	document.getElementById("board").innerHTML = "";
+	const hintDisplay = document.getElementById("hint-display");
+	hintDisplay.textContent = "";
+	hintDisplay.classList.remove("visible");
 	document.getElementById("guess-input").value = "";
 
 	// round_status.php bootstraps the very first round itself on cold start — nothing
@@ -72,6 +76,7 @@ async function startRound() {
 }
 
 function applyRoundState(data) {
+	document.getElementById("round-id-display").textContent = `Round #${data.round_id}`;
 	updateHintUI(data.hints_remaining);
 	updateGuessUI(data.already_guessed);
 
@@ -82,11 +87,18 @@ function applyRoundState(data) {
 	}
 
 	document.getElementById("mangled-sentence").textContent = data.mangled_text;
-	document.getElementById("timer").textContent = data.seconds_remaining;
-	document.getElementById("round-id-display").textContent = `Round #${data.round_id}`;
+	updateWheel(data.seconds_remaining);
 
 	showScreen("round");
 	startPolling();
+}
+
+function updateWheel(secondsRemaining) {
+	const wheel = document.getElementById("wheel");
+	const pct = (Math.max(secondsRemaining, 0) / ROUND_DURATION) * 100;
+	wheel.style.setProperty("--pct", pct.toFixed(1));
+	wheel.classList.toggle("is-low", secondsRemaining <= 5 && secondsRemaining > 0);
+	document.getElementById("timer").textContent = secondsRemaining;
 }
 
 function updateHintUI(hintsRemaining) {
@@ -130,28 +142,21 @@ submission.addEventListener("submit", async (e) => {
 	const guess = input.value.trim();
 	if (!guess) return;
 
-	const feedback = document.getElementById("feedback");
-	feedback.textContent = "Checking...";
-	feedback.className = "feedback";
-
 	const res = await apiSubmitGuess(guess);
+	const board = document.getElementById("board");
 
 	if (!res.success) {
-		feedback.className = "feedback wrong";
-		feedback.textContent = res.error;
+		addBoardEntry(board, "wrong", res.error);
 		return;
 	}
 
 	const { result, points_awarded } = res.data;
-	feedback.className = "feedback " + result;
-
-	if (result === "correct") {
-		feedback.textContent = `Correct! +${points_awarded} points`;
-	} else if (result === "close") {
-		feedback.textContent = "Close! (one guess per round — hang tight for reveal)";
-	} else {
-		feedback.textContent = "Not quite. (one guess per round — hang tight for reveal)";
-	}
+	const messages = {
+		correct: `Correct! +${points_awarded} points`,
+		close: "Close! (one guess per round — hang tight for reveal)",
+		wrong: "Not quite. (one guess per round — hang tight for reveal)",
+	};
+	addBoardEntry(board, result, messages[result]);
 
 	// Only one guess per player per round — don't let them try again. The round
 	// itself doesn't end early just because this player guessed (it's shared with
@@ -159,6 +164,18 @@ submission.addEventListener("submit", async (e) => {
 	// once the shared timer actually runs out.
 	updateGuessUI(true);
 });
+
+function addBoardEntry(board, verdict, text) {
+	const chipLabel = { correct: "Correct", close: "Close", wrong: "Wrong" }[verdict];
+	const row = document.createElement("div");
+	row.className = "board-entry";
+	row.innerHTML = `
+		<span class="chip ${verdict}">${chipLabel}</span>
+		<span class="text"></span>
+	`;
+	row.querySelector(".text").textContent = text;
+	board.prepend(row);
+}
 
 const hints = document.getElementById("hint-btn");
 
@@ -173,6 +190,7 @@ hints.addEventListener("click", async () => {
 
 	const { language_code, text, hints_remaining } = res.data;
 	display.textContent = `Hint (${language_code}): "${text}"`;
+	display.classList.add("visible");
 	updateHintUI(hints_remaining);
 });
 
@@ -196,29 +214,27 @@ function playReveal(data) {
 	showScreen("reveal");
 
 	document.getElementById("reveal-error").textContent = "";
-	document.getElementById("reveal-round-id-display").textContent = `Round #${data.round_id}`;
-	document.getElementById("reveal-original").textContent =
-		`Original: "${data.seed_text}"`;
+	document.getElementById("round-id-display").textContent = `Round #${data.round_id}`;
+	document.getElementById("reveal-original-text").textContent = `"${data.seed_text}"`;
 
 	const container = document.getElementById("reveal-steps");
 	container.innerHTML = "";
-	document.getElementById("mangle-score-display").textContent = "";
 
-	// char_delta isn't sent by the backend — derive it here from each step's length
-	// vs. the previous one (or the seed, for the first hop).
+	const scoreDisplay = document.getElementById("mangle-score-display");
+	scoreDisplay.classList.remove("visible");
+
+	const total = data.chain_steps.length;
 	const stepEls = data.chain_steps.map((step, i) => {
-		const prevLength =
-			i === 0 ? data.seed_text.length : data.chain_steps[i - 1].text.length;
-		const charDelta = step.text.length - prevLength;
-		const deltaSign = charDelta > 0 ? "+" : "";
-
 		const el = document.createElement("div");
-		el.className = "reveal-step";
+		el.className = "reveal-step" + (i === total - 1 ? " final" : "");
 		el.innerHTML = `
-      <span class="lang">${step.language_code}</span>
-      <span class="delta">${deltaSign}${charDelta} chars</span>
-      <div>${step.text}</div>
-    `;
+			<div class="badge">${step.language_code}</div>
+			<div class="step-body">
+				<div class="step-meta">Translation ${i + 1} of ${total}</div>
+				<div class="step-text"></div>
+			</div>
+		`;
+		el.querySelector(".step-text").textContent = step.text;
 		container.appendChild(el);
 		return el;
 	});
@@ -227,12 +243,20 @@ function playReveal(data) {
 }
 
 async function revealStepsSequentially(stepEls, mangleScore) {
+	const scoreDisplay = document.getElementById("mangle-score-display");
+	document.getElementById("mangle-num").textContent = Math.round(mangleScore);
+
+	if (reduceMotion) {
+		stepEls.forEach((el) => el.classList.add("visible"));
+		scoreDisplay.classList.add("visible");
+		return;
+	}
+
 	for (let i = 0; i < stepEls.length; i++) {
 		await new Promise((resolve) => setTimeout(resolve, 1000)); // ~1 sec per hop
 		stepEls[i].classList.add("visible");
 	}
 
 	await new Promise((resolve) => setTimeout(resolve, 400));
-	document.getElementById("mangle-score-display").textContent =
-		`Mangle Score: ${mangleScore} / 100`;
+	scoreDisplay.classList.add("visible");
 }

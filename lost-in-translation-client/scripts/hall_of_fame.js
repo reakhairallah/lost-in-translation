@@ -54,7 +54,7 @@ async function loadHallOfFame() {
         <div class="entry" > -> "${entry.final_text}"</div>
       </div>
       <div class="score">${entry.mangle_score}/100</div>
-      <button class="vote-btn" data-id="${entry.id}"> ^ ${entry.vote_count}</button>
+      <button class="vote-btn" data-id="${entry.id}">&#8593; ${entry.vote_count}</button>
     `;
 		list.appendChild(li);
 	});
@@ -67,7 +67,7 @@ async function loadHallOfFame() {
 			const res = await apiVote(id);
 
 			if (res.success) {
-				btn.textContent = ` ^ ${res.data.vote_count}`;
+				btn.innerHTML = `&#8593; ${res.data.vote_count}`;
 				btn.classList.add("voted");
 			} else {
 				// Most likely "already voted" (e.g. from a previous visit) — treat the

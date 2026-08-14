@@ -8,23 +8,33 @@
 	</head>
 
 	<body>
-		<header class="topbar">
-			<h1>Hall of Fame</h1>
-			<a href="/lost-in-translation/lost-in-translation-client/index.html" class="nav-link">
-				<- Back to Game</a
-			>
-		</header>
+		<div class="app">
+			<div class="chase"></div>
 
-		<main class="game-wrap">
-			<div class="sort-controls">
-				<button class="sort-btn active" data-sort="mangle">
-					Sort by Mangle Score
-				</button>
-				<button class="sort-btn" data-sort="votes">Sort by Votes</button>
-			</div>
+			<header class="topbar">
+				<div class="brand">
+					<span class="logo">Hall of Fame</span>
+				</div>
+				<a href="/lost-in-translation/lost-in-translation-client/index.html" class="nav-link">
+					&larr; Back to Game
+				</a>
+			</header>
 
-			<ul id="hof-list" class="hof-list"></ul>
-		</main>
+			<main class="main">
+				<div class="game-wrap">
+					<div class="sort-controls">
+						<button class="sort-btn active" data-sort="mangle">
+							Sort by Mangle Score
+						</button>
+						<button class="sort-btn" data-sort="votes">Sort by Votes</button>
+					</div>
+
+					<ul id="hof-list" class="hof-list"></ul>
+				</div>
+			</main>
+
+			<div class="chase"></div>
+		</div>
 
 		<script src="/lost-in-translation/lost-in-translation-client/scripts/axios.min.js"></script>
 		<script src="/lost-in-translation/lost-in-translation-client/scripts/hall_of_fame.js"></script>

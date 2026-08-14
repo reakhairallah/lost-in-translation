@@ -7,57 +7,87 @@
 		<link rel="stylesheet" href="/lost-in-translation/lost-in-translation-client/styles/style.css"/>
 	</head>
 	<body>
-		<header class="topbar">
-			<a href="/lost-in-translation/lost-in-translation-client/index.html" class="logo">
-				Lost in Translation
-			</a>
-			<a href="/lost-in-translation/lost-in-translation-client/pages/hall-of-fame.html" class="nav-link">
-				Hall of Fame ->
-			</a>
-		</header>
+		<div class="app">
+			<div class="chase"></div>
 
-		<main class="game-wrap">
-			<section id="loading-screen" class="screen">
-				<div class="spinner"></div>
-				<p>Translating through 6 languages...</p>
-			</section>
-
-			<section id="round-screen" class="screen">
-				<p id="round-id-display" class="round-id"></p>
-				<div class="timer-bar"><span id="timer">60</span>s left</div>
-
-				<div class="mangled-box">
-					<p id="mangled-sentence">Loading...</p>
+			<header class="topbar">
+				<div class="brand">
+					<a href="/lost-in-translation/lost-in-translation-client/index.html" class="logo">
+						Lost in Translation
+					</a>
+					<span class="round-tag" id="round-id-display"></span>
 				</div>
+				<a href="/lost-in-translation/lost-in-translation-client/pages/hall-of-fame.html" class="nav-link">
+					Hall of Fame &rarr;
+				</a>
+			</header>
 
-				<form id="guess-form">
-					<input
-						type="text"
-						id="guess-input"
-						placeholder="What was the original sentence?"
-						autocomplete="off"
-						required
-					/>
-					<button type="submit" class="btn-primary">Guess</button>
-				</form>
+			<main class="main">
+				<div class="game-wrap">
+					<section id="loading-screen" class="screen">
+						<div class="loading-screen">
+							<div class="spinner"></div>
+							<p>Translating through 6 languages...</p>
+						</div>
+					</section>
 
-				<div id="feedback" class="feedback"></div>
+					<section id="round-screen" class="screen">
+						<div class="round-top">
+							<div class="wheel" id="wheel">
+								<div class="wheel-face"><span id="timer">60</span></div>
+							</div>
+							<div class="booth">
+								<p id="mangled-sentence">Loading...</p>
+							</div>
+						</div>
 
-				<button id="hint-btn" class="btn-secondary">Use Hint (-30 pts)</button>
-				<div id="hint-display" class="hint-display"></div>
-			</section>
+						<p class="label">Your guess</p>
+						<form id="guess-form">
+							<input
+								type="text"
+								id="guess-input"
+								placeholder="What was the original sentence?"
+								autocomplete="off"
+								required
+							/>
+							<button type="submit" class="btn-primary">Guess</button>
+						</form>
 
-			<section id="reveal-screen" class="screen">
-				<h2>The Chain of Destruction</h2>
-				<p id="reveal-round-id-display" class="round-id"></p>
-				<div id="reveal-original" class="reveal-original"></div>
-				<div id="reveal-steps" class="reveal-steps"></div>
-				<div id="mangle-score-display" class="mangle-score"></div>
-				<p class="start-round-note">This round already ended — start the next one when you're ready.</p>
-				<div id="reveal-error" class="feedback wrong"></div>
-				<button id="play-again-btn" class="btn-primary">Start Round</button>
-			</section>
-		</main>
+						<div id="board" class="board"></div>
+
+						<div class="hint-row">
+							<button id="hint-btn" class="btn-secondary">Use Hint (-30 pts)</button>
+						</div>
+						<div id="hint-display" class="hint-display"></div>
+					</section>
+
+					<section id="reveal-screen" class="screen">
+						<h2>The Chain of Destruction</h2>
+
+						<div class="reveal-original">
+							<p class="label">What the sentence actually said</p>
+							<p id="reveal-original-text"></p>
+						</div>
+
+						<p class="label">The journey, translation by translation</p>
+						<div id="reveal-steps" class="reveal-steps"></div>
+
+						<div id="mangle-score-display" class="mangle-score">
+							<div class="score-flash">
+								<span class="num" id="mangle-num">0</span>
+								<span class="cap">Mangle score</span>
+							</div>
+						</div>
+
+						<p class="start-round-note">This round already ended — start the next one when you're ready.</p>
+						<div id="reveal-error" class="error-text"></div>
+						<button id="play-again-btn" class="btn-primary">Start Round</button>
+					</section>
+				</div>
+			</main>
+
+			<div class="chase"></div>
+		</div>
 
 		<script src="/lost-in-translation/lost-in-translation-client/scripts/axios.min.js"></script>
 		<script src="/lost-in-translation/lost-in-translation-client/scripts/game.js"></script>
