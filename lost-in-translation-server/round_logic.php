@@ -1,12 +1,12 @@
 <?php
 
-include("temp/translation_chain.php");
+include("translation.php");
 include("scoring.php");
 
 function createRound(): int {
     global $mysql;
 
-    $languageChain = ['ja','ar','fi','sw','hu','ko'];
+    $languageChain = ['en','ja','ar','fi','sw','hu','ko','en'];
     $language_chain_str = implode(",", $languageChain);
 
     $sql = "SELECT id, text FROM seeds WHERE is_active = 1 ORDER BY RAND() LIMIT 1";
@@ -18,7 +18,7 @@ function createRound(): int {
     $seed_id = $seed["id"];
     $seed_text = $seed["text"];
 
-    $result = runTranslationChain($seed_text, $languageChain);
+    $result = run_chain($mysql, $seed_text, $languageChain);
 
     if (!$result["success"]) {
         $error = $result["error"];
