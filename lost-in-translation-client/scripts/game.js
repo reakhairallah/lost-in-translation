@@ -83,6 +83,7 @@ function applyRoundState(data) {
 
 	document.getElementById("mangled-sentence").textContent = data.mangled_text;
 	document.getElementById("timer").textContent = data.seconds_remaining;
+	document.getElementById("round-id-display").textContent = `Round #${data.round_id}`;
 
 	showScreen("round");
 	startPolling();
@@ -178,10 +179,13 @@ hints.addEventListener("click", async () => {
 const reveal = document.getElementById("play-again-btn");
 
 reveal.addEventListener("click", async () => {
+	const errorEl = document.getElementById("reveal-error");
+	errorEl.textContent = "";
+
 	const res = await apiNextRound();
 
 	if (!res.success) {
-		document.getElementById("feedback").textContent = res.error;
+		errorEl.textContent = res.error;
 		return;
 	}
 
@@ -191,6 +195,8 @@ reveal.addEventListener("click", async () => {
 function playReveal(data) {
 	showScreen("reveal");
 
+	document.getElementById("reveal-error").textContent = "";
+	document.getElementById("reveal-round-id-display").textContent = `Round #${data.round_id}`;
 	document.getElementById("reveal-original").textContent =
 		`Original: "${data.seed_text}"`;
 

@@ -23,6 +23,7 @@
 			</section>
 
 			<section id="round-screen" class="screen">
+				<p id="round-id-display" class="round-id"></p>
 				<div class="timer-bar"><span id="timer">60</span>s left</div>
 
 				<div class="mangled-box">
@@ -48,10 +49,13 @@
 
 			<section id="reveal-screen" class="screen">
 				<h2>The Chain of Destruction</h2>
+				<p id="reveal-round-id-display" class="round-id"></p>
 				<div id="reveal-original" class="reveal-original"></div>
 				<div id="reveal-steps" class="reveal-steps"></div>
 				<div id="mangle-score-display" class="mangle-score"></div>
-				<button id="play-again-btn" class="btn-primary">Play Again</button>
+				<p class="start-round-note">This round already ended — start the next one when you're ready.</p>
+				<div id="reveal-error" class="feedback wrong"></div>
+				<button id="play-again-btn" class="btn-primary">Start Round</button>
 			</section>
 		</main>
 
